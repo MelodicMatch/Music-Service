@@ -10,7 +10,7 @@ public class KafkaConfig {
 
     @Bean
     public NewTopic userProfilesTopic() {
-        return TopicBuilder.name("user-music")
+        return TopicBuilder.name("user-profiles")
                 .partitions(1)
                 .replicas(1)
                 .build();

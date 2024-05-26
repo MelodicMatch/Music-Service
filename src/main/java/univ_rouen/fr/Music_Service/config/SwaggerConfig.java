@@ -1,7 +1,5 @@
 package univ_rouen.fr.Music_Service.config;
 
-
-
 import org.springdoc.core.models.GroupedOpenApi;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -10,11 +8,11 @@ import org.springframework.context.annotation.Configuration;
 public class SwaggerConfig {
 
     @Bean
-    public GroupedOpenApi apiProfiles() {
+    public GroupedOpenApi musicApi() {
         return GroupedOpenApi.builder()
                 .group("Music API")
                 .packagesToScan("univ_rouen.fr.Music_Service.controller")
-                .pathsToMatch("/music/**")
+                .pathsToMatch("/music/**", "/spotify/**")
                 .build();
     }
 }

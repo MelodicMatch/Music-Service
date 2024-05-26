@@ -1,20 +1,27 @@
 package univ_rouen.fr.Music_Service.controller;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import univ_rouen.fr.Music_Service.entity.*;
-import univ_rouen.fr.Music_Service.service.*;
+import org.springframework.validation.annotation.Validated;
 
 import java.util.List;
 import java.util.Optional;
 
+import univ_rouen.fr.Music_Service.entity.*;
+import univ_rouen.fr.Music_Service.service.*;
+
+
+@Tag(name = "Music API", description = "API pour la gestion des entités musicales")
 @RestController
 @RequestMapping("/music")
 @AllArgsConstructor
-@Tag(name = "Music API", description = "API for managing music entities")
+@Tag(name = "Music API", description = "API pour la gestion des entités musicales")
+@Validated
 public class MusicController {
 
     private final GenreService genreService;
@@ -27,256 +34,276 @@ public class MusicController {
     private final PlaylistMusicService playlistMusicService;
     private final PlaylistSubscriberService playlistSubscriberService;
     private final KafkaService kafkaService;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
-    // Endpoints for Genre
-    @Operation(summary = "Get all genres", description = "Retrieve a list of all genres")
+    // Endpoints pour Genre
+    @Operation(summary = "Obtenir tous les genres", description = "Récupérer une liste de tous les genres")
     @GetMapping("/genres")
     public ResponseEntity<List<Genre>> getAllGenres() {
         return ResponseEntity.ok(genreService.getAllGenres());
     }
 
-    @Operation(summary = "Get genre by ID", description = "Retrieve a genre by its ID")
+    @Operation(summary = "Obtenir un genre par ID", description = "Récupérer un genre par son ID")
     @GetMapping("/genres/{id}")
     public ResponseEntity<Genre> getGenreById(@PathVariable String id) {
         Optional<Genre> genre = genreService.getGenreById(id);
         return genre.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
     }
 
-    @Operation(summary = "Create new genre", description = "Create a new genre")
+    @Operation(summary = "Créer un nouveau genre", description = "Créer un nouveau genre")
     @PostMapping("/genres")
-    public ResponseEntity<Genre> createGenre(@RequestBody Genre genre) {
-        return ResponseEntity.ok(genreService.createGenre(genre));
+    public ResponseEntity<Genre> createGenre(@Valid @RequestBody Genre genre) {
+        Genre createdGenre = genreService.createGenre(genre);
+        kafkaService.sendMessage(createdGenre.getGenreID(), createdGenre.getName());
+        return ResponseEntity.ok(createdGenre);
     }
 
-    @Operation(summary = "Delete genre", description = "Delete a genre by its ID")
+    @Operation(summary = "Supprimer un genre", description = "Supprimer un genre par son ID")
     @DeleteMapping("/genres/{id}")
     public ResponseEntity<Void> deleteGenre(@PathVariable String id) {
         genreService.deleteGenre(id);
-        kafkaService.sendMessage("Genre deleted: " + id);
+        kafkaService.sendMessage(id, "Genre supprimé");
         return ResponseEntity.noContent().build();
     }
 
-    // Endpoints for SubGenre
-    @Operation(summary = "Get all subGenres", description = "Retrieve a list of all subGenres")
+    // Endpoints pour SubGenre
+    @Operation(summary = "Obtenir tous les sous-genres", description = "Récupérer une liste de tous les sous-genres")
     @GetMapping("/subGenres")
     public ResponseEntity<List<SubGenre>> getAllSubGenres() {
         return ResponseEntity.ok(subGenreService.getAllSubGenres());
     }
 
-    @Operation(summary = "Get subGenre by ID", description = "Retrieve a subGenre by its ID")
+    @Operation(summary = "Obtenir un sous-genre par ID", description = "Récupérer un sous-genre par son ID")
     @GetMapping("/subGenres/{id}")
     public ResponseEntity<SubGenre> getSubGenreById(@PathVariable String id) {
         Optional<SubGenre> subGenre = subGenreService.getSubGenreById(id);
         return subGenre.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
     }
 
-    @Operation(summary = "Create new subGenre", description = "Create a new subGenre")
+    @Operation(summary = "Créer un nouveau sous-genre", description = "Créer un nouveau sous-genre")
     @PostMapping("/subGenres")
-    public ResponseEntity<SubGenre> createSubGenre(@RequestBody SubGenre subGenre) {
-        return ResponseEntity.ok(subGenreService.createSubGenre(subGenre));
+    public ResponseEntity<SubGenre> createSubGenre(@Valid @RequestBody SubGenre subGenre) {
+        SubGenre createdSubGenre = subGenreService.createSubGenre(subGenre);
+        kafkaService.sendMessage(createdSubGenre.getId(), createdSubGenre.toString());
+        return ResponseEntity.ok(createdSubGenre);
     }
 
-    @Operation(summary = "Delete subGenre", description = "Delete a subGenre by its ID")
+    @Operation(summary = "Supprimer un sous-genre", description = "Supprimer un sous-genre par son ID")
     @DeleteMapping("/subGenres/{id}")
     public ResponseEntity<Void> deleteSubGenre(@PathVariable String id) {
         subGenreService.deleteSubGenre(id);
-        kafkaService.sendMessage("SubGenre deleted: " + id);
+        kafkaService.sendMessage(id, "Sous-genre supprimé");
         return ResponseEntity.noContent().build();
     }
 
-    // Endpoints for Artist
-    @Operation(summary = "Get all artists", description = "Retrieve a list of all artists")
+    // Endpoints pour Artist
+    @Operation(summary = "Obtenir tous les artistes", description = "Récupérer une liste de tous les artistes")
     @GetMapping("/artists")
     public ResponseEntity<List<Artist>> getAllArtists() {
         return ResponseEntity.ok(artistService.getAllArtists());
     }
 
-    @Operation(summary = "Get artist by ID", description = "Retrieve an artist by its ID")
+    @Operation(summary = "Obtenir un artiste par ID", description = "Récupérer un artiste par son ID")
     @GetMapping("/artists/{id}")
     public ResponseEntity<Artist> getArtistById(@PathVariable String id) {
         Optional<Artist> artist = artistService.getArtistById(id);
         return artist.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
     }
 
-    @Operation(summary = "Create new artist", description = "Create a new artist")
+    @Operation(summary = "Créer un nouvel artiste", description = "Créer un nouvel artiste")
     @PostMapping("/artists")
-    public ResponseEntity<Artist> createArtist(@RequestBody Artist artist) {
-        return ResponseEntity.ok(artistService.createArtist(artist));
+    public ResponseEntity<Artist> createArtist(@Valid @RequestBody Artist artist) {
+        Artist createdArtist = artistService.createArtist(artist);
+        kafkaService.sendMessage(createdArtist.getArtistID(), createdArtist.getName());
+        return ResponseEntity.ok(createdArtist);
     }
 
-    @Operation(summary = "Delete artist", description = "Delete an artist by its ID")
+    @Operation(summary = "Supprimer un artiste", description = "Supprimer un artiste par son ID")
     @DeleteMapping("/artists/{id}")
     public ResponseEntity<Void> deleteArtist(@PathVariable String id) {
         artistService.deleteArtist(id);
-        kafkaService.sendMessage("Artist deleted: " + id);
+        kafkaService.sendMessage(id, "Artiste supprimé");
         return ResponseEntity.noContent().build();
     }
 
-    // Endpoints for MusicService
-    @Operation(summary = "Get all music services", description = "Retrieve a list of all music services")
+    // Endpoints pour MusicService
+    @Operation(summary = "Obtenir tous les services musicaux", description = "Récupérer une liste de tous les services musicaux")
     @GetMapping("/musicServices")
     public ResponseEntity<List<MusicService>> getAllMusicServices() {
         return ResponseEntity.ok(musicServiceService.getAllMusicServices());
     }
 
-    @Operation(summary = "Get music service by ID", description = "Retrieve a music service by its ID")
+    @Operation(summary = "Obtenir un service musical par ID", description = "Récupérer un service musical par son ID")
     @GetMapping("/musicServices/{id}")
     public ResponseEntity<MusicService> getMusicServiceById(@PathVariable String id) {
         Optional<MusicService> musicService = musicServiceService.getMusicServiceById(id);
         return musicService.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
     }
 
-    @Operation(summary = "Create new music service", description = "Create a new music service")
+    @Operation(summary = "Créer un nouveau service musical", description = "Créer un nouveau service musical")
     @PostMapping("/musicServices")
-    public ResponseEntity<MusicService> createMusicService(@RequestBody MusicService musicService) {
-        return ResponseEntity.ok(musicServiceService.createMusicService(musicService));
+    public ResponseEntity<MusicService> createMusicService(@Valid @RequestBody MusicService musicService) {
+        MusicService createdMusicService = musicServiceService.createMusicService(musicService);
+        kafkaService.sendMessage(createdMusicService.getMusicServiceID(), createdMusicService.getName());
+        return ResponseEntity.ok(createdMusicService);
     }
 
-    @Operation(summary = "Delete music service", description = "Delete a music service by its ID")
+    @Operation(summary = "Supprimer un service musical", description = "Supprimer un service musical par son ID")
     @DeleteMapping("/musicServices/{id}")
     public ResponseEntity<Void> deleteMusicService(@PathVariable String id) {
         musicServiceService.deleteMusicService(id);
-        kafkaService.sendMessage("MusicService deleted: " + id);
+        kafkaService.sendMessage(id, "Service musical supprimé");
         return ResponseEntity.noContent().build();
     }
 
-    // Endpoints for Music
-    @Operation(summary = "Get all musics", description = "Retrieve a list of all musics")
+    // Endpoints pour Music
+    @Operation(summary = "Obtenir toutes les musiques", description = "Récupérer une liste de toutes les musiques")
     @GetMapping("/musics")
     public ResponseEntity<List<Music>> getAllMusics() {
         return ResponseEntity.ok(musicManagementService.getAllMusics());
     }
 
-    @Operation(summary = "Get music by ID", description = "Retrieve a music by its ID")
+    @Operation(summary = "Obtenir une musique par ID", description = "Récupérer une musique par son ID")
     @GetMapping("/musics/{id}")
     public ResponseEntity<Music> getMusicById(@PathVariable String id) {
         Optional<Music> music = musicManagementService.getMusicById(id);
         return music.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
     }
 
-    @Operation(summary = "Create new music", description = "Create a new music")
+    @Operation(summary = "Créer une nouvelle musique", description = "Créer une nouvelle musique")
     @PostMapping("/musics")
-    public ResponseEntity<Music> createMusic(@RequestBody Music music) {
-        return ResponseEntity.ok(musicManagementService.createMusic(music));
+    public ResponseEntity<Music> createMusic(@Valid @RequestBody Music music) {
+        Music createdMusic = musicManagementService.createMusic(music);
+        kafkaService.sendMessage(createdMusic.getMusicID(), createdMusic.getTitle());
+        return ResponseEntity.ok(createdMusic);
     }
 
-    @Operation(summary = "Delete music", description = "Delete a music by its ID")
+    @Operation(summary = "Supprimer une musique", description = "Supprimer une musique par son ID")
     @DeleteMapping("/musics/{id}")
     public ResponseEntity<Void> deleteMusic(@PathVariable String id) {
         musicManagementService.deleteMusic(id);
-        kafkaService.sendMessage("Music deleted: " + id);
+        kafkaService.sendMessage(id, "Musique supprimée");
         return ResponseEntity.noContent().build();
     }
 
-    // Endpoints for MusicLink
-    @Operation(summary = "Get all music links", description = "Retrieve a list of all music links")
+    // Endpoints pour MusicLink
+    @Operation(summary = "Obtenir tous les liens musicaux", description = "Récupérer une liste de tous les liens musicaux")
     @GetMapping("/musicLinks")
     public ResponseEntity<List<MusicLink>> getAllMusicLinks() {
         return ResponseEntity.ok(musicLinkService.getAllMusicLinks());
     }
 
-    @Operation(summary = "Get music link by ID", description = "Retrieve a music link by its ID")
+    @Operation(summary = "Obtenir un lien musical par ID", description = "Récupérer un lien musical par son ID")
     @GetMapping("/musicLinks/{id}")
     public ResponseEntity<MusicLink> getMusicLinkById(@PathVariable String id) {
         Optional<MusicLink> musicLink = musicLinkService.getMusicLinkById(id);
         return musicLink.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
     }
 
-    @Operation(summary = "Create new music link", description = "Create a new music link")
+    @Operation(summary = "Créer un nouveau lien musical", description = "Créer un nouveau lien musical")
     @PostMapping("/musicLinks")
-    public ResponseEntity<MusicLink> createMusicLink(@RequestBody MusicLink musicLink) {
-        return ResponseEntity.ok(musicLinkService.createMusicLink(musicLink));
+    public ResponseEntity<MusicLink> createMusicLink(@Valid @RequestBody MusicLink musicLink) {
+        MusicLink createdMusicLink = musicLinkService.createMusicLink(musicLink);
+        kafkaService.sendMessage(createdMusicLink.getId(), "Nouveau lien musical créé");
+        return ResponseEntity.ok(createdMusicLink);
     }
 
-    @Operation(summary = "Delete music link", description = "Delete a music link by its ID")
+    @Operation(summary = "Supprimer un lien musical", description = "Supprimer un lien musical par son ID")
     @DeleteMapping("/musicLinks/{id}")
     public ResponseEntity<Void> deleteMusicLink(@PathVariable String id) {
         musicLinkService.deleteMusicLink(id);
-        kafkaService.sendMessage("MusicLink deleted: " + id);
+        kafkaService.sendMessage(id, "Lien musical supprimé");
         return ResponseEntity.noContent().build();
     }
 
-    // Endpoints for Playlist
-    @Operation(summary = "Get all playlists", description = "Retrieve a list of all playlists")
+    // Endpoints pour Playlist
+    @Operation(summary = "Obtenir toutes les playlists", description = "Récupérer une liste de toutes les playlists")
     @GetMapping("/playlists")
     public ResponseEntity<List<Playlist>> getAllPlaylists() {
         return ResponseEntity.ok(playlistService.getAllPlaylists());
     }
 
-    @Operation(summary = "Get playlist by ID", description = "Retrieve a playlist by its ID")
+    @Operation(summary = "Obtenir une playlist par ID", description = "Récupérer une playlist par son ID")
     @GetMapping("/playlists/{id}")
     public ResponseEntity<Playlist> getPlaylistById(@PathVariable String id) {
         Optional<Playlist> playlist = playlistService.getPlaylistById(id);
         return playlist.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
     }
 
-    @Operation(summary = "Create new playlist", description = "Create a new playlist")
+    @Operation(summary = "Créer une nouvelle playlist", description = "Créer une nouvelle playlist")
     @PostMapping("/playlists")
-    public ResponseEntity<Playlist> createPlaylist(@RequestBody Playlist playlist) {
-        return ResponseEntity.ok(playlistService.createPlaylist(playlist));
+    public ResponseEntity<Playlist> createPlaylist(@Valid @RequestBody Playlist playlist) {
+        Playlist createdPlaylist = playlistService.createPlaylist(playlist);
+        kafkaService.sendMessage(createdPlaylist.getPlaylistID(), createdPlaylist.getName());
+        return ResponseEntity.ok(createdPlaylist);
     }
 
-    @Operation(summary = "Delete playlist", description = "Delete a playlist by its ID")
+    @Operation(summary = "Supprimer une playlist", description = "Supprimer une playlist par son ID")
     @DeleteMapping("/playlists/{id}")
     public ResponseEntity<Void> deletePlaylist(@PathVariable String id) {
         playlistService.deletePlaylist(id);
-        kafkaService.sendMessage("Playlist deleted: " + id);
+        kafkaService.sendMessage(id, "Playlist supprimée");
         return ResponseEntity.noContent().build();
     }
 
-    // Endpoints for PlaylistMusic
-    @Operation(summary = "Get all playlist musics", description = "Retrieve a list of all playlist musics")
+    // Endpoints pour PlaylistMusic
+    @Operation(summary = "Obtenir toutes les musiques de playlist", description = "Récupérer une liste de toutes les musiques de playlist")
     @GetMapping("/playlistMusics")
     public ResponseEntity<List<PlaylistMusic>> getAllPlaylistMusics() {
         return ResponseEntity.ok(playlistMusicService.getAllPlaylistMusics());
     }
 
-    @Operation(summary = "Get playlist music by ID", description = "Retrieve a playlist music by its ID")
+    @Operation(summary = "Obtenir une musique de playlist par ID", description = "Récupérer une musique de playlist par son ID")
     @GetMapping("/playlistMusics/{id}")
     public ResponseEntity<PlaylistMusic> getPlaylistMusicById(@PathVariable String id) {
         Optional<PlaylistMusic> playlistMusic = playlistMusicService.getPlaylistMusicById(id);
         return playlistMusic.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
     }
 
-    @Operation(summary = "Create new playlist music", description = "Create a new playlist music")
+    @Operation(summary = "Créer une nouvelle musique de playlist", description = "Créer une nouvelle musique de playlist")
     @PostMapping("/playlistMusics")
-    public ResponseEntity<PlaylistMusic> createPlaylistMusic(@RequestBody PlaylistMusic playlistMusic) {
-        return ResponseEntity.ok(playlistMusicService.createPlaylistMusic(playlistMusic));
+    public ResponseEntity<PlaylistMusic> createPlaylistMusic(@Valid @RequestBody PlaylistMusic playlistMusic) {
+        PlaylistMusic createdPlaylistMusic = playlistMusicService.createPlaylistMusic(playlistMusic);
+        kafkaService.sendMessage(createdPlaylistMusic.getId(), "Nouvelle musique de playlist créée");
+        return ResponseEntity.ok(createdPlaylistMusic);
     }
 
-    @Operation(summary = "Delete playlist music", description = "Delete a playlist music by its ID")
+    @Operation(summary = "Supprimer une musique de playlist", description = "Supprimer une musique de playlist par son ID")
     @DeleteMapping("/playlistMusics/{id}")
     public ResponseEntity<Void> deletePlaylistMusic(@PathVariable String id) {
         playlistMusicService.deletePlaylistMusic(id);
-        kafkaService.sendMessage("PlaylistMusic deleted: " + id);
+        kafkaService.sendMessage(id, "Musique de playlist supprimée");
         return ResponseEntity.noContent().build();
     }
 
-    // Endpoints for PlaylistSubscriber
-    @Operation(summary = "Get all playlist subscribers", description = "Retrieve a list of all playlist subscribers")
+    // Endpoints pour PlaylistSubscriber
+    @Operation(summary = "Obtenir tous les abonnés de playlist", description = "Récupérer une liste de tous les abonnés de playlist")
     @GetMapping("/playlistSubscribers")
     public ResponseEntity<List<PlaylistSubscriber>> getAllPlaylistSubscribers() {
         return ResponseEntity.ok(playlistSubscriberService.getAllPlaylistSubscribers());
     }
 
-    @Operation(summary = "Get playlist subscriber by ID", description = "Retrieve a playlist subscriber by its ID")
+    @Operation(summary = "Obtenir un abonné de playlist par ID", description = "Récupérer un abonné de playlist par son ID")
     @GetMapping("/playlistSubscribers/{id}")
     public ResponseEntity<PlaylistSubscriber> getPlaylistSubscriberById(@PathVariable String id) {
         Optional<PlaylistSubscriber> playlistSubscriber = playlistSubscriberService.getPlaylistSubscriberById(id);
         return playlistSubscriber.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
     }
 
-    @Operation(summary = "Create new playlist subscriber", description = "Create a new playlist subscriber")
+    @Operation(summary = "Créer un nouvel abonné de playlist", description = "Créer un nouvel abonné de playlist")
     @PostMapping("/playlistSubscribers")
-    public ResponseEntity<PlaylistSubscriber> createPlaylistSubscriber(@RequestBody PlaylistSubscriber playlistSubscriber) {
-        return ResponseEntity.ok(playlistSubscriberService.createPlaylistSubscriber(playlistSubscriber));
+    public ResponseEntity<PlaylistSubscriber> createPlaylistSubscriber(@Valid @RequestBody PlaylistSubscriber playlistSubscriber) {
+        PlaylistSubscriber createdPlaylistSubscriber = playlistSubscriberService.createPlaylistSubscriber(playlistSubscriber);
+        kafkaService.sendMessage(createdPlaylistSubscriber.getId(), "Nouvel abonné de playlist créé");
+        return ResponseEntity.ok(createdPlaylistSubscriber);
     }
 
-    @Operation(summary = "Delete playlist subscriber", description = "Delete a playlist subscriber by its ID")
+    @Operation(summary = "Supprimer un abonné de playlist", description = "Supprimer un abonné de playlist par son ID")
     @DeleteMapping("/playlistSubscribers/{id}")
     public ResponseEntity<Void> deletePlaylistSubscriber(@PathVariable String id) {
         playlistSubscriberService.deletePlaylistSubscriber(id);
-        kafkaService.sendMessage("PlaylistSubscriber deleted: " + id);
+        kafkaService.sendMessage(id, "Abonné de playlist supprimé");
         return ResponseEntity.noContent().build();
     }
 }
+

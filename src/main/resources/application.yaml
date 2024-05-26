@@ -84,3 +84,10 @@ springdoc:
 # Propriété personnalisée
 custom:
   resource-path: src/main/resources/
+
+spotify:
+  api:
+    client-id: c2bd86fbfe114e44a4814c65ce952698
+    client-secret: 1e471c2882e94cb1baaf84426d33d9c9
+    token-url: https://accounts.spotify.com/api/token
+    api-url: https://api.spotify.com/v1
