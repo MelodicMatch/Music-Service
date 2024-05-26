@@ -14,7 +14,7 @@ public class SwaggerConfig {
         return GroupedOpenApi.builder()
                 .group("Music API")
                 .packagesToScan("univ_rouen.fr.Music_Service.controller")
-                .pathsToMatch("/profiles/**")
+                .pathsToMatch("/music/**")
                 .build();
     }
 }
